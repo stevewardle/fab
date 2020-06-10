@@ -293,13 +293,13 @@ class CPragmaInjector(TextReaderDecorator):
                 #       need to include identifying info
                 #       e.g. the name of the original include?
                 if include.startswith('<'):
-                    yield '#pragma FAB sys-include-start'
+                    yield '#pragma FAB sys-include-start\n'
                     yield line
-                    yield '#pragma FAB sys-include-end'
+                    yield '#pragma FAB sys-include-end\n'
                 elif include.startswith(('"', "'")):
-                    yield '#pragma FAB usr-include-start'
+                    yield '#pragma FAB usr-include-start\n'
                     yield line
-                    yield '#pragma FAB usr-include-end'
+                    yield '#pragma FAB usr-include-end\n'
                 else:
                     msg = 'Found badly formatted #include'
                     raise TaskException(msg)
@@ -313,7 +313,7 @@ class CIncludeMarker(TextModifier):
     file to inject special #pragmas
     """
     def __init__(self, workspace: Path, reader: TextReader) -> None:
-        injector = CPragmaInjector(self._reader)
+        injector = CPragmaInjector(reader)
         super().__init__(workspace, injector)
 
     @property
@@ -325,7 +325,7 @@ class CPreProcessor(SingleFileCommand):
 
     @property
     def as_list(self) -> List[str]:
-        base_command = ['cpp', '-traditional-cpp', '-P']
+        base_command = ['cpp', '-P']
         file_args = [str(self._filename), str(self.output[0])]
         return base_command + self._flags + file_args
 

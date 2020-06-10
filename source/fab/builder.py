@@ -22,6 +22,9 @@ from fab.tasks.fortran import \
     FortranUnitID, \
     FortranCompiler, \
     FortranLinker
+from fab.tasks.c import \
+    CIncludeMarker, \
+    CPreProcessor
 from fab.source_tree import TreeDescent, ExtensionVisitor
 from fab.queue import QueueManager
 
@@ -96,6 +99,8 @@ class Fab(object):
     _extension_map: Dict[str, Union[Type[Task], Type[Command]]] = {
         '.f90': FortranAnalyser,
         '.F90': FortranPreProcessor,
+        '.c': CIncludeMarker,
+        '.c-fab-marked': CPreProcessor,
     }
     _compiler_map: Dict[str, Type[Command]] = {
         '.f90': FortranCompiler,

@@ -15,6 +15,7 @@ from fab.tasks import \
     Task, \
     Analyser, \
     Command, \
+    TextModifier, \
     SingleFileCommand
 from fab.tasks.common import \
     CommandTask
@@ -52,6 +53,8 @@ class ExtensionVisitor(TreeVisitor):
                 flags = self._command_flags_map.get(task_class, [])
                 task = CommandTask(
                     task_class(Path(reader.filename), self._workspace, flags))
+            elif issubclass(task_class, TextModifier):
+                task = task_class(self._workspace, reader)
             else:
                 message = \
                     f"Unhandled class '{task_class}' in extension map."

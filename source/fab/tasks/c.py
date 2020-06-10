@@ -24,8 +24,8 @@ from fab.database import \
     WorkingStateException
 
 from fab.tasks import \
-    Task, \
     SingleFileCommand, \
+    TextModifier, \
     TaskException
 
 from fab.reader import TextReader, TextReaderDecorator
@@ -307,36 +307,18 @@ class CPragmaInjector(TextReaderDecorator):
                 yield line
 
 
-class CIncludeMarker(Task):
+class CIncludeMarker(TextModifier):
     """
     The task which applies the CPragmaInjector to a C source
-    file to inject special #pragmas - the file is also
-    effectively moved into the working directory
+    file to inject special #pragmas
     """
     def __init__(self, workspace: Path, reader: TextReader) -> None:
-        self._workspace = workspace
-        self._reader = reader
-
-    def run(self) -> None:
         injector = CPragmaInjector(self._reader)
-        with self.products[0].open('w') as out_file:
-            for line in injector.line_by_line():
-                out_file.write(line)
+        super().__init__(workspace, injector)
 
     @property
-    def prerequisites(self) -> List[Path]:
-        if isinstance(self._reader.filename, Path):
-            return [self._reader.filename]
-        else:
-            return []
-
-    @property
-    def products(self) -> List[Path]:
-        if isinstance(self._reader.filename, Path):
-            return [self._workspace /
-                    self._reader.filename.with_suffix("c-fab-marked").name]
-        else:
-            return []
+    def extension(self) -> str:
+        return ".c-fab-marked"
 
 
 class CPreProcessor(SingleFileCommand):

@@ -293,13 +293,13 @@ class CPragmaInjector(TextReaderDecorator):
                 #       need to include identifying info
                 #       e.g. the name of the original include?
                 if include.startswith('<'):
-                    yield '#pragma FAB sys-include-start\n'
+                    yield '#pragma FAB SysIncludeStart\n'
                     yield line
-                    yield '#pragma FAB sys-include-end\n'
+                    yield '#pragma FAB SysIncludeEnd\n'
                 elif include.startswith(('"', "'")):
-                    yield '#pragma FAB usr-include-start\n'
+                    yield '#pragma FAB UsrIncludeStart\n'
                     yield line
-                    yield '#pragma FAB usr-include-end\n'
+                    yield '#pragma FAB UsrIncludeEnd\n'
                 else:
                     msg = 'Found badly formatted #include'
                     raise TaskException(msg)

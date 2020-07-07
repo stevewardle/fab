@@ -99,6 +99,7 @@ class Fab(object):
     _extension_map: Dict[str, Union[Type[Task], Type[Command]]] = {
         '.f90': FortranAnalyser,
         '.F90': FortranPreProcessor,
+        '.h': CIncludeMarker,
         '.c': CIncludeMarker,
         '.c-fab-marked': CPreProcessor,
     }

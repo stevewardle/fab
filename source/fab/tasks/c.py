@@ -6,6 +6,7 @@ C language handling classes.
 """
 import re
 from pathlib import Path
+from collections import deque
 
 from typing import \
     List, \
@@ -21,12 +22,14 @@ from fab.database import \
     DatabaseDecorator, \
     FileInfoDatabase, \
     StateDatabase, \
-    WorkingStateException
+    WorkingStateException, \
+    SqliteStateDatabase
 
 from fab.tasks import \
     SingleFileCommand, \
     TextModifier, \
-    TaskException
+    TaskException, \
+    Analyser
 
 from fab.reader import TextReader, TextReaderDecorator
 
@@ -318,7 +321,8 @@ class CIncludeMarker(TextModifier):
 
     @property
     def extension(self) -> str:
-        return ".c-fab-marked"
+        current = self._reader.filename.suffix
+        return f"{current}-fab-marked"
 
 
 class CPreProcessor(SingleFileCommand):
@@ -333,3 +337,63 @@ class CPreProcessor(SingleFileCommand):
     def output(self) -> List[Path]:
         return [self._workspace /
                 self._filename.with_suffix('.c-fab-pp').name]
+
+
+class CAnalyser(Analyser):
+    def __init__(self, reader: TextReader, database: SqliteStateDatabase):
+        super().__init__(reader, database)
+
+    def run(self):
+        state = CWorkingState(self.database)
+        state.remove_c_file(self._reader.filename)
+
+        index = clang.cindex.Index.create()
+        translation_unit = index.parse(self._reader.filename,
+                                       args=["-xc"])
+
+        # First find out the extents of any FAB pragmas
+        sys_includes = {"start": [], "end": []}
+        usr_includes = {"start": [], "end": []}
+
+        # Use a deque to implement a rolling window of 4 identifiers
+        # (enough to be sure we can spot an entire pragma)
+        identifiers = deque([])
+        for token in translation_unit.cursor.get_tokens():
+            identifiers.append(token)
+            if len(identifiers) < 4:
+                continue
+            if len(identifiers) > 4:
+                identifiers.popleft()
+
+            # Trigger off of the FAB identifier only to save
+            # on joining the group too frequently
+            if identifiers[2].spelling == "FAB":
+                line = identifiers[2].location.line
+                full = " ".join(id.spelling for id in identifiers)
+                if full == "# pragma FAB SysIncludeStart":
+                    sys_includes["start"].append(line)
+                elif full == "# pragma FAB SysIncludeEnd":
+                    sys_includes["end"].append(line)
+                elif full == "# pragma FAB UsrIncludeStart":
+                    usr_includes["start"].append(line)
+                elif full == "# pragma FAB UsrIncludeEnd":
+                    usr_includes["end"].append(line)
+
+        # Now walk the actual nodes and find all relevant external symbols
+        for node in translation_unit.cursor.walk_preorder():
+            if node.kind == clang.cindex.CursorKind.FUNCTION_DECL:
+                if (node.is_definition()
+                        and node.linkage == clang.cindex.LinkageKind.EXTERNAL):
+                    # A function defined in this source file that is
+                    # made available to the rest of the application
+                    # - this needs to go in the database
+                    pass
+                else:
+                    # Other declarations are coming from headers
+                    # - we need to identify if they come from a system or
+                    #   a user header; this will later be cross-referenced
+                    #   with any calls we find in this file; if it is
+                    #   declared in a system header we can ignore it, but
+                    #   if it comes from a user header we need to enter
+                    #   it as a dependency in the database
+                    pass

@@ -23,6 +23,8 @@ from fab.tasks.fortran import \
     FortranUnitID, \
     FortranCompiler, \
     FortranLinker
+from fab.tasks.c import \
+    CPragmaInjector
 from fab.source_tree import TreeDescent, SourceVisitor
 from fab.queue import QueueManager
 
@@ -97,6 +99,8 @@ class Fab(object):
     _precompile_map: List[Tuple[str, Union[Type[Task], Type[Command]]]] = [
         (r'.*\.f90', FortranAnalyser),
         (r'.*\.F90', FortranPreProcessor),
+        (r'{source}/.*\.h', CPragmaInjector),
+        (r'{source}/.*\.c', CPragmaInjector),
     ]
     _compile_map: List[Tuple[str, Type[Command]]] = [
         (r'.*\.f90', FortranCompiler),
@@ -141,6 +145,10 @@ class Fab(object):
                                                     self._state))
 
     def run(self, source: Path):
+
+        for i, (pattern, classname) in enumerate(self._precompile_map):
+            pattern_sub = pattern.format(source=source)
+            self._precompile_map[i] = (pattern_sub, classname)
 
         self._queue.run()
 

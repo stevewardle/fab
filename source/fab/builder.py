@@ -22,7 +22,10 @@ from fab.tasks.fortran import \
     FortranUnitID, \
     FortranCompiler, \
     FortranLinker
-from fab.source_tree import TreeDescent, ExtensionVisitor
+from fab.source_tree import \
+    TreeDescent, \
+    CoreLinker, \
+    ExtensionVisitor
 from fab.queue import QueueManager
 
 
@@ -93,10 +96,15 @@ def entry() -> None:
 
 
 class Fab(object):
-    _extension_map: Dict[str, Union[Type[Task], Type[Command]]] = {
-        '.f90': FortranAnalyser,
-        '.F90': FortranPreProcessor,
-    }
+
+    _extensions: List[str] = ['.F90', '.f90']
+
+    _phase_maps: \
+        List[Dict[str, Union[Type[Task], Type[Command]]]] = [
+           {'.F90': FortranPreProcessor},
+           {'.f90': FortranAnalyser},
+        ]
+
     _compiler_map: Dict[str, Type[Command]] = {
         '.f90': FortranCompiler,
     }
@@ -143,15 +151,41 @@ class Fab(object):
 
         self._queue.run()
 
-        visitor = ExtensionVisitor(self._extension_map,
-                                   self._command_flags_map,
-                                   self._state,
-                                   self._workspace,
-                                   self._extend_task_queue)
+        # Initialise core output subdirectory
+        workspace_core = self._workspace / "core"
+        if not workspace_core.exists():
+            workspace_core.mkdir()
+        # Fill the core directory with links to the source files
+        corelinker = CoreLinker(workspace_core, self._extensions)
         descender = TreeDescent(source)
-        descender.descend(visitor)
+        descender.descend(corelinker)
 
-        self._queue.check_queue_done()
+        # Begin phase loop
+        for iphase, phase_map in enumerate(self._phase_maps):
+
+            # The phase will have its own output subdirectory
+            workspace_phase = self._workspace / f"phase_{iphase}"
+            if not workspace_phase.exists():
+                workspace_phase.mkdir()
+
+            # Apply the current phase map to the core subdirectory,
+            # with any output going to the phase subdirectory
+            visitor = ExtensionVisitor(phase_map,
+                                       self._command_flags_map,
+                                       self._state,
+                                       workspace_phase,
+                                       self._extend_task_queue)
+            descender = TreeDescent(workspace_core)
+            descender.descend(visitor)
+
+            # Allow the queue to complete before the next phase
+            self._queue.check_queue_done()
+
+            # Add symlinks to any new files this phase created
+            # to the core subdirectory
+            corelinker = CoreLinker(workspace_core, self._extensions)
+            descender = TreeDescent(workspace_phase)
+            descender.descend(corelinker)
 
         file_db = FileInfoDatabase(self._state)
         for file_info in file_db:

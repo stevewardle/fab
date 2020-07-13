@@ -66,6 +66,20 @@ class ExtensionVisitor(TreeVisitor):
         return new_candidates
 
 
+class CoreLinker(TreeVisitor):
+    def __init__(self, core_dir: Path, extensions: List[str]):
+        self._core_dir = core_dir
+        self._extensions = extensions
+
+    def visit(self, candidate: Path):
+        if candidate.suffix in self._extensions:
+            link = self._core_dir / candidate.name
+            if link.exists():
+                link.unlink()
+            link.symlink_to(candidate.absolute())
+        return []
+
+
 class TreeDescent(object):
     def __init__(self, root: Path):
         self._root = root

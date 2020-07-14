@@ -5,7 +5,6 @@
 ##############################################################################
 from collections import defaultdict
 import logging
-import os
 from pathlib import Path
 from typing import Dict, List, Type, Union
 
@@ -191,8 +190,7 @@ class Fab(object):
 
         file_db = FileInfoDatabase(self._state)
         for file_info in file_db:
-            print(os.path.relpath(file_info.filename,
-                                  self._workspace.parent))
+            print(file_info.filename)
             # Where files are generated in the working directory
             # by third party tools, we cannot guarantee the hashes
             if file_info.filename.match(f'{self._workspace}/phase*/*'):
@@ -203,9 +201,7 @@ class Fab(object):
         fortran_db = FortranWorkingState(self._state)
         for fortran_info in fortran_db:
             print(fortran_info.unit.name)
-            print('    found in: ' + str(
-                os.path.relpath(fortran_info.unit.found_in,
-                                self._workspace.parent)))
+            print('    found in: ' + str(fortran_info.unit.found_in))
             print('    depends on: ' + str(fortran_info.depends_on))
 
         # Start with the top level program unit

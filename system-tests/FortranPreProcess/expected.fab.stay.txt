@@ -1,22 +1,22 @@
-clash.F90
+{source}/clash.F90
     hash: 1656734134
-constants_mod.f90
+{source}/constants_mod.f90
     hash: 1014899572
-go_now_mod.f90
+{source}/go_now_mod.f90
     hash: 374511745
-stay_mod.f90
+{source}/stay_mod.f90
     hash: 3960444120
-working/phase_0/clash.f90
+{working}/phase_0/clash.f90
     hash: --hidden-- (generated file)
 constants_mod
-    found in: constants_mod.f90
+    found in: {source}/constants_mod.f90
     depends on: []
 go_now_mod
-    found in: go_now_mod.f90
+    found in: {source}/go_now_mod.f90
     depends on: ['constants_mod']
 stay_mod
-    found in: stay_mod.f90
+    found in: {source}/stay_mod.f90
     depends on: ['constants_mod']
 stay_or_go_now
-    found in: working/phase_0/clash.f90
+    found in: {working}/phase_0/clash.f90
     depends on: ['constants_mod', 'stay_mod']

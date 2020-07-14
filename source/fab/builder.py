@@ -5,6 +5,7 @@
 ##############################################################################
 from collections import defaultdict
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List, Type, Union
 
@@ -144,8 +145,9 @@ class Fab(object):
     def _extend_task_queue(self, task: Task) -> None:
         self._queue.add_to_queue(task)
         for prereq in task.prerequisites:
-            self._queue.add_to_queue(HashCalculator(FileTextReader(prereq),
-                                                    self._state))
+            self._queue.add_to_queue(
+                HashCalculator(FileTextReader(prereq.resolve()),
+                               self._state))
 
     def run(self, source: Path):
 
@@ -189,10 +191,11 @@ class Fab(object):
 
         file_db = FileInfoDatabase(self._state)
         for file_info in file_db:
-            print(file_info.filename)
+            print(os.path.relpath(file_info.filename,
+                                  self._workspace.parent))
             # Where files are generated in the working directory
             # by third party tools, we cannot guarantee the hashes
-            if file_info.filename.match(f'{self._workspace}/*'):
+            if file_info.filename.match(f'{self._workspace}/phase*/*'):
                 print('    hash: --hidden-- (generated file)')
             else:
                 print(f'    hash: {file_info.adler32}')
@@ -200,7 +203,9 @@ class Fab(object):
         fortran_db = FortranWorkingState(self._state)
         for fortran_info in fortran_db:
             print(fortran_info.unit.name)
-            print('    found in: ' + str(fortran_info.unit.found_in))
+            print('    found in: ' + str(
+                os.path.relpath(fortran_info.unit.found_in,
+                                self._workspace.parent)))
             print('    depends on: ' + str(fortran_info.depends_on))
 
         # Start with the top level program unit

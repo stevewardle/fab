@@ -44,7 +44,7 @@ class ExtensionVisitor(TreeVisitor):
         new_candidates: List[Path] = []
         try:
             task_class = self._extension_map[candidate.suffix]
-            reader: TextReader = FileTextReader(candidate)
+            reader: TextReader = FileTextReader(candidate.resolve())
 
             if issubclass(task_class, Analyser):
                 task: Task = task_class(reader, self._state)

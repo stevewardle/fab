@@ -87,3 +87,21 @@ class SingleFileCommand(Command, ABC):
     @property
     def input(self) -> List[Path]:
         return [self._filename]
+
+
+class TextModifier(Task, ABC):
+    def __init__(self, workspace: Path, reader: TextReader):
+        self._workspace = workspace
+        self._reader = reader
+
+    def run(self) -> None:
+        with self.products[0].open('w') as out_file:
+            for line in self._reader.line_by_line():
+                out_file.write(line)
+
+    @property
+    def prerequisites(self) -> List[Path]:
+        if isinstance(self._reader.filename, Path):
+            return [self._reader.filename]
+        else:
+            return []

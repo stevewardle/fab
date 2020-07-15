@@ -23,6 +23,7 @@ from fab.tasks.fortran import \
     FortranUnitID, \
     FortranCompiler, \
     FortranLinker
+from fab.tasks.c import CPragmaInjector
 from fab.source_tree import \
     TreeDescent, \
     CoreLinker, \
@@ -98,12 +99,14 @@ def entry() -> None:
 
 class Fab(object):
 
-    _extensions: List[str] = ['.F90', '.f90']
+    _extensions: List[str] = ['.F90', '.f90', '.c', '.h']
 
     _phase_maps: \
         List[List[Tuple[str, Union[Type[Task], Type[Command]]]]] = [
             [
                 (r'.*\.F90', FortranPreProcessor),
+                (r'{source}/.*\.h', CPragmaInjector),
+                (r'{source}/.*\.c', CPragmaInjector),
             ],
             [
                 (r'.*\.f90', FortranAnalyser),
@@ -173,6 +176,11 @@ class Fab(object):
             workspace_phase = self._workspace / f"phase_{iphase}"
             if not workspace_phase.exists():
                 workspace_phase.mkdir()
+
+            # Apply any required substitutions to the phase map
+            for i, (pattern, classname) in enumerate(phase_map):
+                pattern_sub = pattern.format(source=workspace_core)
+                phase_map[i] = (pattern_sub, classname)
 
             # Apply the current phase map to the core subdirectory,
             # with any output going to the phase subdirectory

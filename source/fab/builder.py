@@ -6,7 +6,8 @@
 from collections import defaultdict
 import logging
 from pathlib import Path
-from typing import Dict, List, Type, Union
+from typing import Dict, List, Type, Union, Tuple
+from re import match
 
 from fab import FabException
 from fab.database import SqliteStateDatabase, FileInfoDatabase
@@ -25,7 +26,7 @@ from fab.tasks.fortran import \
 from fab.source_tree import \
     TreeDescent, \
     CoreLinker, \
-    ExtensionVisitor
+    SourceVisitor
 from fab.queue import QueueManager
 
 
@@ -100,14 +101,18 @@ class Fab(object):
     _extensions: List[str] = ['.F90', '.f90']
 
     _phase_maps: \
-        List[Dict[str, Union[Type[Task], Type[Command]]]] = [
-           {'.F90': FortranPreProcessor},
-           {'.f90': FortranAnalyser},
+        List[List[Tuple[str, Union[Type[Task], Type[Command]]]]] = [
+            [
+                (r'.*\.F90', FortranPreProcessor),
+            ],
+            [
+                (r'.*\.f90', FortranAnalyser),
+            ],
         ]
 
-    _compiler_map: Dict[str, Type[Command]] = {
-        '.f90': FortranCompiler,
-    }
+    _compile_map: List[Tuple[str, Type[Command]]] = [
+        (r'.*\.f90', FortranCompiler),
+    ]
 
     def __init__(self,
                  workspace: Path,
@@ -171,11 +176,11 @@ class Fab(object):
 
             # Apply the current phase map to the core subdirectory,
             # with any output going to the phase subdirectory
-            visitor = ExtensionVisitor(phase_map,
-                                       self._command_flags_map,
-                                       self._state,
-                                       workspace_phase,
-                                       self._extend_task_queue)
+            visitor = SourceVisitor(phase_map,
+                                    self._command_flags_map,
+                                    self._state,
+                                    workspace_phase,
+                                    self._extend_task_queue)
             descender = TreeDescent(workspace_core)
             descender.descend(visitor)
 
@@ -256,7 +261,16 @@ class Fab(object):
             #       expect to be *produced* by the compile
             #       and pass this to the constructor for
             #       inclusion in the task's "products"
-            compiler_class = self._compiler_map[unit.found_in.suffix]
+            compiler_class = None
+            for pattern, classname in self._compile_map:
+                # Note we keep searching through the map
+                # even after a match is found; this means that
+                # later matches will override earlier ones
+                if match(pattern, str(unit.found_in)):
+                    compiler_class = classname
+
+            if compiler_class is None:
+                continue
 
             if issubclass(compiler_class, FortranCompiler):
                 flags = self._command_flags_map.get(compiler_class, [])

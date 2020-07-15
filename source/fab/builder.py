@@ -23,7 +23,9 @@ from fab.tasks.fortran import \
     FortranUnitID, \
     FortranCompiler, \
     FortranLinker
-from fab.tasks.c import CPragmaInjector
+from fab.tasks.c import \
+    CPragmaInjector, \
+    CPreProcessor
 from fab.source_tree import \
     TreeDescent, \
     CoreLinker, \
@@ -104,9 +106,12 @@ class Fab(object):
     _phase_maps: \
         List[List[Tuple[str, Union[Type[Task], Type[Command]]]]] = [
             [
-                (r'.*\.F90', FortranPreProcessor),
                 (r'{source}/.*\.h', CPragmaInjector),
                 (r'{source}/.*\.c', CPragmaInjector),
+            ],
+            [
+                (r'.*\.F90', FortranPreProcessor),
+                (r'{source}/.*\.c', CPreProcessor),
             ],
             [
                 (r'.*\.f90', FortranAnalyser),

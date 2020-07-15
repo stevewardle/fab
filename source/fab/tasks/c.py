@@ -16,7 +16,8 @@ from typing import \
 
 from fab.tasks import \
     TextModifier, \
-    TaskException
+    TaskException, \
+    SingleFileCommand
 
 from fab.reader import TextReader, TextReaderDecorator
 
@@ -78,3 +79,17 @@ class CPragmaInjector(TextModifier):
             return [self._workspace / input_file.name]
         else:
             return []
+
+
+class CPreProcessor(SingleFileCommand):
+
+    @property
+    def as_list(self) -> List[str]:
+        base_command = ['cpp', '-P']
+        file_args = [str(self._filename), str(self.output[0])]
+        return base_command + self._flags + file_args
+
+    @property
+    def output(self) -> List[Path]:
+        return [self._workspace /
+                self._filename.with_suffix('.c').name]
